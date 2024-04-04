@@ -1,18 +1,8 @@
 import numpy as np
+import math
 import torch
 import torch.nn as nn
 import torch_geometric.nn as gnn
-
-
-def cal_rmse_one_arr(true, pred):
-    return np.sqrt(np.mean(np.square(true - pred)))
-
-
-def cal_r2_one_arr(true, pred):
-    corr_matrix = np.corrcoef(true, pred)
-    corr = corr_matrix[0, 1]
-    r2 = corr ** 2
-    return r2
 
 
 class GNN(nn.Module):
@@ -64,15 +54,15 @@ def get_gnn(gnn_style, in_dim, out_dim):
         raise TypeError("Unknown type of gnn_style!")
 
 
-def run_gnn(gnn_style, gnn, x, ei, ew):
+def run_gnn(gnn_style, gnn_, x, ei, ew):
     if gnn_style in ["gcn", "cheb", "sg", "appnp", "tag"]:
-        return gnn(x, ei, ew)
+        return gnn_(x, ei, ew)
     elif gnn_style in ["unimp", "gan"]:
         batch_size = x.shape[0]  # 批量数量
         h_all = None
         for i in range(batch_size):  # 将每个样本输入图神经网络后，将每个输出结果拼接
             x_one = x[i, :, :]
-            h = gnn(x_one, ei)
+            h = gnn_(x_one, ei)
             h = h.unsqueeze(0)
             if h_all is None:
                 h_all = h
@@ -80,7 +70,7 @@ def run_gnn(gnn_style, gnn, x, ei, ew):
                 h_all = torch.cat((h_all, h), dim=0)
         return h_all
     else:
-        return gnn(x, ei)
+        return gnn_(x, ei)
 
 
 def get_edge_info(k, num_nodes, adm_style, device):
@@ -135,3 +125,66 @@ def tran_adm_to_edge_index(adm):
     edge_index = torch.from_numpy(edge_index).long()
     edge_weight = torch.from_numpy(edge_weight).float()
     return edge_index, edge_weight
+
+
+# def generate_square_subsequent_mask(sq_len):
+#     """
+#     Generate Mask Matrix for Transformer Attention Mechanism
+#
+#     :param sq_len: Length of sequence (int)
+#     :return: torch.Tensor
+#     """
+#     mask = (torch.triu(torch.ones(sq_len, sq_len)) == 1).transpose(0, 1)
+#     mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+#     return mask
+
+
+class SimpleLSTM(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(SimpleLSTM, self).__init__()
+        self.hidden_size = hidden_size
+        self.lstm1 = nn.LSTM(input_size, hidden_size, batch_first=True)
+        self.relu = nn.ReLU()
+        self.drop = nn.Dropout()
+        self.fc = nn.Linear(hidden_size, output_size)
+
+    def forward(self, x):
+        out, _ = self.lstm1(x)
+        out = self.relu(self.drop(out))
+        out = self.fc(out)
+        return out
+
+
+class TransformerModel(nn.Module):
+    def __init__(self, d_model, out_dim, n_head, num_layers, length_max):
+        super().__init__()
+        self.encoder = nn.TransformerEncoder(nn.TransformerEncoderLayer(d_model, n_head, batch_first=True), num_layers)
+        self.relu = nn.ReLU()
+        self.drop = nn.Dropout()
+        self.decoder = nn.Linear(d_model, out_dim)
+        self.position_enc = PositionalEncoding(d_model, length_max)
+
+    def forward(self, src):
+        # src = src + self.position_embedding(torch.arange(0, src.size(1)).unsqueeze(0).to(src.device))
+        # tgt = tgt + self.position_embedding(torch.arange(0, tgt.size(1)).unsqueeze(0).to(tgt.device))
+        src = self.position_enc(src)
+        memory = self.encoder(src)
+        memory = self.relu(self.drop(memory))
+        output = self.decoder(memory)
+        return output
+
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, length_max):
+        super().__init__()
+        pe = torch.zeros(length_max, d_model)
+        position = torch.arange(0, length_max).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * -(math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        x = x + self.pe[:, :x.size(1)]
+        return x

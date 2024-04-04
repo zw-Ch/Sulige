@@ -4,15 +4,22 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import os
+os.environ['PROJ_LIB'] = '<path to anaconda>/anaconda3/share/proj'
+from datetime import datetime
 from sklearn.neighbors import KernelDensity
+from mpl_toolkits.basemap import Basemap
+from scipy.spatial import Delaunay
+from matplotlib.dates import DateFormatter, DayLocator
+from matplotlib.patches import Rectangle
 
 
 def cal_dist(x, bins):
-    x_label, x_bins = pd.cut(x, bins=bins, retbins=True)
-    x_label = pd.DataFrame(x_label)
-    x_label_vc = pd.DataFrame(x_label).value_counts()
-    interval = x_label_vc.index.tolist()
-    interval_sum = x_label_vc.values
+    x_out, x_bins = pd.cut(x, bins=bins, retbins=True)
+    x_out = pd.DataFrame(x_out)
+    x_out_vc = pd.DataFrame(x_out).value_counts()
+    interval = x_out_vc.index.tolist()
+    interval_sum = x_out_vc.values
     mid_all, left, right = [], float('inf'), -float('inf')
     for i in range(bins):
         interval_one = interval[i][0]
@@ -27,7 +34,7 @@ def cal_dist(x, bins):
     sort_index = np.argsort(mid_all)
     mid_all_sort = mid_all[sort_index]
     mid_all_sort = np.around(mid_all_sort, 2)
-    interval_sum_sort = interval_sum[(sort_index)]
+    interval_sum_sort = interval_sum[sort_index]
     return mid_all_sort, interval_sum_sort, left, right
 
 
@@ -82,3 +89,102 @@ def plot_dist(x, bins, jump, pos, title, fig_si, fo_si, fo_ti_si, fo_te, x_name,
     ax.legend(fontsize=fo_si)
 
     return fig
+
+
+def plot_delaunay(locs, z, z_name, fig_size=(12, 12), fo_si=35, fo_ti_si=25, k=3):
+    """
+    Plot Delaunay Figure
+
+    :param locs: Location
+    :param z: Z axis
+    :param z_name:
+    :param fig_size:
+    :param fo_si:
+    :param fo_ti_si:
+    :param k: Interpolation times
+    :return:
+    """
+
+    def get_idx(x_, y_):
+        return np.argwhere((x == x_) & (y == y_)).reshape(-1)[0]
+
+    def cal():
+        cx, cy = center[index][0], center[index][1]
+        x1, y1, x2, y2, x3, y3 = sim[0][0], sim[0][1], sim[1][0], sim[1][1], sim[2][0], sim[2][1]
+        idx_1, idx_2, idx_3 = get_idx(x1, y1), get_idx(x2, y2), get_idx(x3, y3)
+        z_1, z_2, z_3 = z[idx_1], z[idx_2], z[idx_3]
+        z_mean = np.mean([z_1, z_2, z_3])
+        return cx, cy, z_mean
+
+    x, y = locs[:, 0], locs[:, 1]
+    tri = Delaunay(locs)
+    center = np.sum(locs[tri.simplices], axis=1) / 3.0      # 每个三角形的重心
+    locs_new, locs_ori = locs, locs
+    z_new = z.tolist()
+
+    while k != 0:
+        for index, sim in enumerate(locs[tri.simplices]):
+            cx_, cy_, z_ = cal()
+            point_one = np.array([cx_, cy_]).reshape(1, -1)  # 增加的一个节点，即中心点
+            locs_new = np.concatenate((locs_new, point_one), axis=0)
+            z_new.append(z_)  # 增加的一个深度
+        locs = locs_new
+        z = z_new
+        tri = Delaunay(locs)
+        center = np.sum(locs[tri.simplices], axis=1) / 3.0
+        x, y = locs[:, 0], locs[:, 1]
+        k = k - 1
+
+    z = np.array(z)
+    color = []
+    for index, sim in enumerate(locs[tri.simplices]):
+        cx_, cy_, z_ = cal()
+        color.append(z_)
+    color = np.array(color)
+
+    fig = plt.figure(figsize=fig_size)
+    plt.tripcolor(locs[:, 0], locs[:, 1], tri.simplices.copy(), facecolors=color, edgecolors='none',
+                  cmap=plt.cm.Spectral_r)
+    cbar = plt.colorbar()
+    cbar.ax.tick_params(labelsize=fo_ti_si)
+    plt.tick_params(labelbottom='off', labelleft='off', left='off', right='off', bottom='off', top='off')
+    plt.scatter(locs_ori[:, 0], locs_ori[:, 1], color='r', s=15)    # 将油井的位置标出
+    plt.title(z_name, fontsize=fo_si, pad=20)
+    plt.xlabel("X", fontsize=fo_si, labelpad=10)
+    plt.ylabel("Y", fontsize=fo_si, labelpad=10)
+    plt.xticks(fontsize=fo_ti_si)
+    plt.yticks(fontsize=fo_ti_si)
+    return fig
+
+
+def plot_date(dates):
+    """
+    Plot Date of different wells
+
+    :param dates: List of numpy.ndarray
+    """
+    dates_convert = [(datetime.strptime(date[0], '%Y/%m/%d'), datetime.strptime(date[-1], '%Y/%m/%d')) for date in dates]
+    dates_convert = dates_convert[:10]
+
+    min_date = min(date for pair in dates_convert for date in pair)
+    max_date = max(date for pair in dates_convert for date in pair)
+
+    return None
+
+
+def plot_map(locs, bins=8):
+    lat, lon = locs[:, 0], locs[:, 1]
+    lat_bounds = [np.min(lat), np.max(lat)]
+    lon_bounds = [np.min(lon), np.max(lon)]
+    m = Basemap(projection='cyl',
+                llcrnrlon=lon_bounds[0],
+                llcrnrlat=lat_bounds[0],
+                urcrnrlon=lon_bounds[1],
+                urcrnrlat=lat_bounds[1])
+    # parallels = np.linspace(lat_bounds[0], lat_bounds[1], bins)
+    # meridians = np.linspace(lon_bounds[0], lon_bounds[1], bins)
+    # m.drawcoastlines()
+    # m.drawmapboundary()
+    x, y = m(lon, lat)
+    m.scatter(x, y)
+    pass
