@@ -14,9 +14,21 @@ conda install matplotlib
 conda install xlrd
 ```
 
-## Program Description
-### 1. Predict Daily Gas Production
-Go to [pred](https://github.com/zw-Ch/Sulige/tree/main/pred) page, and predict time series 
+## Predict Daily Oil Production
+Go to [pred](https://github.com/zw-Ch/Sulige/tree/main/pred) page to predict daily oil production
+
+### 1.Autoregressive Model
+- **Data**:<br>
+Single Time Series, $x=[x_{0},x_{1},...,x_{N-2},x_{N-1}]$
+
+- **Training Set**:<br>
+Previous part of time series,
+
+- **Test Set**:<br>
+Latter part of times series, 
+
+### 2. 
+
 ```
 cd pred
 python pred_block_mul.py       // Predict Production in multiple Blocks
