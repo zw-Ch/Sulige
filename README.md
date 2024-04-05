@@ -29,10 +29,8 @@ Previous part of sequences, $\boldsymbol{x} = [x_{0}, x_{1}, ..., x_{t-1}, x_{t}
 Latter part of sequences, $\boldsymbol{x} = [x_{t+1}, x_{t+2}, ..., x_{N-2}, x_{N-1}]$
 ```
 cd pred_one
-python pred_gnn_one_well.py       // Predict Production in multiple Blocks
-python pred_gnn_one_well.py       // Predict Production in single Block
-python pred_well_mul.py        // Predict Production in multiple Wells
-python pred_well_one.py        // Predict Production in single Well 
+python pred_gnn_one_well.py       // Predict Production with GNNs
+python pred_rnn_one_well.py       // Predict Production with RNNs
 ```
 
 ### 2.  
