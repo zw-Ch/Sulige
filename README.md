@@ -31,7 +31,7 @@ Latter part of times series, $\boldsymbol{x} = [x_{t+1}, x_{t+2}, ..., x_{N-2}, 
 ### 2.  
 If you plan to analyze multiple wells, that is:
 - **Data**:<br>
-Multiple Time Series, $\boldsymbol{X}=[x_{0}, x_{1}, ..., x_{N-2}, x_{N-1}]$
+Multiple Time Series, $\boldsymbol{X}=[\boldsymbol{x}_{0}, x_{1}, ..., x_{N-2}, x_{N-1}]$
 
 - **Training Set**:<br>
 Previous part of time series, $\boldsymbol{X}=[\boldsymbol{x}_{0}, \boldsymbol{x}_{1}, ..., \boldsymbol{x}_{t-1}, \boldsymbol{x}_{t}]$
