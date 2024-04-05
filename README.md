@@ -17,17 +17,27 @@ conda install xlrd
 ## Predict Daily Oil Production
 Go to [pred](https://github.com/zw-Ch/Sulige/tree/main/pred) page to predict daily oil production
 
-### 1.Autoregressive Model
+### 1. Autoregressive Model
+If you plan to analyze a single well, that is:
 - **Data**:<br>
-Single Time Series, $x=[x_{0},x_{1},...,x_{N-2},x_{N-1}]$
+Single Time Series, $\textbf{x}=[x_{0},x_{1},...,x_{N-2},x_{N-1}]$
 
 - **Training Set**:<br>
-Previous part of time series,
+Previous part of time series, $\textbf{x}=[x_{0},x_{1},...,x_{t-1},x_{t}]$
 
 - **Test Set**:<br>
-Latter part of times series, 
+Latter part of times series, $\textbf{x}=[x_{t+1},x_{t+2},...,x_{N-2},x_{N-1}]$
 
-### 2. 
+### 2.  
+If you plan to analyze multiple wells, that is:
+- **Data**:<br>
+Multiple Time Series, , $\textbf{x}=[x_{0},x_{1},...,x_{N-2},x_{N-1}]$
+
+- **Training Set**:<br>
+Previous part of time series, $\textbf{x}=[x_{0},x_{1},...,x_{t-1},x_{t}]$
+
+- **Test Set**:<br>
+Latter part of times series, $\textbf{x}=[x_{t+1},x_{t+2},...,x_{N-2},x_{N-1}]$
 
 ```
 cd pred
