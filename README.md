@@ -20,25 +20,24 @@ Go to [pred](https://github.com/zw-Ch/Sulige/tree/main/pred) page to predict dai
 ### 1. Autoregressive Model
 If you plan to analyze a single well, that is:
 - **Data**:<br>
-Single Time Series, $\boldsymbol{x}=[x_{0}, x_{1}, ..., x_{N-2}, x_{N-1}]$
+Single sequences, $\boldsymbol{x}=[x_{0}, x_{1}, ..., x_{N-2}, x_{N-1}]$
 
 - **Training Set**:<br>
-Previous part of time series, $\boldsymbol{x} = [x_{0}, x_{1}, ..., x_{t-1}, x_{t}]$
+Previous part of sequences, $\boldsymbol{x} = [x_{0}, x_{1}, ..., x_{t-1}, x_{t}]$
 
 - **Test Set**:<br>
-Latter part of times series, $\boldsymbol{x} = [x_{t+1}, x_{t+2}, ..., x_{N-2}, x_{N-1}]$
+Latter part of sequences, $\boldsymbol{x} = [x_{t+1}, x_{t+2}, ..., x_{N-2}, x_{N-1}]$
 
 ### 2.  
 If you plan to analyze multiple wells, that is:
 - **Data**:<br>
-Multiple Time Series, $\boldsymbol{X}=[\boldsymbol{x}\_{0}, \boldsymbol{x}\_{1}, ..., \boldsymbol{x}\_{N-2}, \boldsymbol{x}\_{N-1}]$
+Multiple sequences, $\boldsymbol{X}=[\boldsymbol{x}\_{0}, \boldsymbol{x}\_{1}, ..., \boldsymbol{x}\_{N-2}, \boldsymbol{x}\_{N-1}]$
 
 - **Training Set**:<br>
-Previous part of time series, $\boldsymbol{X}=[\boldsymbol{x}\_{0}, \boldsymbol{x}\_{1}, ..., \boldsymbol{x}\_{t-1}, \boldsymbol{x}\_{t}]$
+Several sequences, $\boldsymbol{X}=[\boldsymbol{x}\_{0}, \boldsymbol{x}\_{1}, ..., \boldsymbol{x}\_{t-1}, \boldsymbol{x}\_{t}]$
 
 - **Test Set**:<br>
-Latter part of times series, $\boldsymbol{X}=[\boldsymbol{x}\_{t+1}, \boldsymbol{x}\_{t+2}, ..., \boldsymbol{x}\_{N-2}, \boldsymbol{x}\_{N-1}]$
-
+Other sequences, $\boldsymbol{X}=[\boldsymbol{x}\_{t+1}, \boldsymbol{x}\_{t+2}, ..., \boldsymbol{x}\_{N-2}, \boldsymbol{x}\_{N-1}]$
 ```
 cd pred
 python pred_block_mul.py       // Predict Production in multiple Blocks
