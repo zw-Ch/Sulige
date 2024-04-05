@@ -33,7 +33,7 @@ python pred_gnn_one_well.py       // Predict Production with GNNs
 python pred_rnn_one_well.py       // Predict Production with RNNs
 ```
 
-### 2.  
+### 2. Deep Learning Model
 If you plan to analyze multiple wells, that is:
 - **Data**:<br>
 Multiple sequences, $\boldsymbol{X}=[\boldsymbol{x}\_{0}, \boldsymbol{x}\_{1}, ..., \boldsymbol{x}\_{N-2}, \boldsymbol{x}\_{N-1}]$
