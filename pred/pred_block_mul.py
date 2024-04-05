@@ -8,6 +8,8 @@ import func.draw as draw
 import func.net as net
 
 
+# ["LSTM", "Trans"]
+model_style = "Trans"
 device = "cuda:1" if torch.cuda.is_available() else "cpu"
 root = "../dataset"
 lx = 120
@@ -15,13 +17,22 @@ ly = 12
 train_ratio = 0.75
 epochs = 50
 
-# TransformerModel Parameter
+"""
+LSTM Parameter
+"""
+hid_dim = 64
+
+"""
+TransformerModel Parameter
+"""
 n_head = 8
 num_layers = 4
+gnn_style = "gcn"
+adm_style = "ts_un"
+k = 1
 
-blocks_name = ['120（1）', '120（2）', '47（1）', '47（2）', '47（3）', '47（4）']
-
-blocks = well.Blocks(root)
+blocks_name = ['120（1）']
+blocks = well.Blocks(root, blocks_name)
 blocks.remove_data_zero(0.001)
 length_min = 2000
 length_max = 6000
@@ -31,8 +42,12 @@ data = blocks.get_data()
 wells_name = blocks.wells_name
 train_loader, test_loader = well.get_loader(data, wells_name, train_ratio, lx, ly)
 
-# model = net.SimpleLSTM(lx, 32, ly).to(device)
-model = net.TransformerModel(lx, ly, n_head, num_layers, length_max).to(device)
+if model_style == "LSTM":
+    model = net.SimpleLSTM(lx, hid_dim, ly).to(device)
+elif model_style == "Trans":
+    model = net.Trans(lx, ly, n_head, num_layers, length_max, adm_style, gnn_style, k, device).to(device)
+else:
+    raise TypeError("Unknown type of 'model_style'")
 criterion = nn.MSELoss().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=0.0001, weight_decay=0.0001)
 

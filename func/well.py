@@ -133,11 +133,11 @@ class Wells(Method):
         """
         wells, wells_name = [], []
         block_names = os.listdir(osp.join(self.root, "product_data"))
-        block_names = [block_name.split('.')[0] for block_name in block_names]
         for block_name in block_names:
-            block = Block(self.root, block_name)
-            wells += block.wells
-            wells_name += block.wells_name
+            if block_name.endswith('xls'):
+                block = Block(self.root, block_name.split('.')[0])
+                wells += block.wells
+                wells_name += block.wells_name
         return wells, wells_name
 
 

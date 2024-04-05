@@ -9,14 +9,15 @@ class GNN(nn.Module):
     def __init__(self, gnn_style, adm_style, k, num_nodes, device):
         super().__init__()
         self.gnn_style = gnn_style
+        self.k = k
         self.gnn1 = get_gnn(gnn_style, 1, 16)
         self.gnn2 = get_gnn(gnn_style, 16, 1)
         self.ei1, self.ew1 = get_edge_info(k, num_nodes, adm_style, device)
         self.ei1, self.ew1 = get_edge_info(k, num_nodes, adm_style, device)
 
     def forward(self, x):
-        h = run_gnn(self.gnn_style, self.gnn1, x, self.ei1, self.ew1)
-        h = run_gnn(self.gnn_style, self.gnn2, h, self.ei2, self.ew2)
+        h = run_gnn(self.gnn_style, self.gnn1, x, self.k)
+        h = run_gnn(self.gnn_style, self.gnn2, h, self.k)
         return h
 
 
@@ -54,15 +55,16 @@ def get_gnn(gnn_style, in_dim, out_dim):
         raise TypeError("Unknown type of gnn_style!")
 
 
-def run_gnn(gnn_style, gnn_, x, ei, ew):
+def run_gnn(gnn_style, gnn_, x, adm_style, k, device):
+    edge_index = get_edge_info(k, x.size(1), adm_style, device)
     if gnn_style in ["gcn", "cheb", "sg", "appnp", "tag"]:
-        return gnn_(x, ei, ew)
+        return gnn_(x, edge_index)
     elif gnn_style in ["unimp", "gan"]:
         batch_size = x.shape[0]  # 批量数量
         h_all = None
         for i in range(batch_size):  # 将每个样本输入图神经网络后，将每个输出结果拼接
             x_one = x[i, :, :]
-            h = gnn_(x_one, ei)
+            h = gnn_(x_one, edge_index)
             h = h.unsqueeze(0)
             if h_all is None:
                 h_all = h
@@ -70,47 +72,43 @@ def run_gnn(gnn_style, gnn_, x, ei, ew):
                 h_all = torch.cat((h_all, h), dim=0)
         return h_all
     else:
-        return gnn_(x, ei)
+        return gnn_(x, edge_index)
 
 
 def get_edge_info(k, num_nodes, adm_style, device):
     if adm_style == "ts_un":
-        adm = ts_un(num_nodes, k)
-    elif adm_style == "tg":
-        adm = tg(num_nodes)
+        u, v = [], []
+        for i in range(num_nodes):
+            left = max(0, i - k)
+            right = min(num_nodes - 1, i + k)
+            v_ = np.concatenate((np.arange(left, i), np.arange(i + 1, right + 1)))
+            u_ = np.full(v_.shape, i, dtype=int)
+            u.extend(u_), v.extend(v_)
+        edge_index = torch.tensor([u, v], dtype=torch.long)
+    # elif adm_style == "tg":
+    #     adm = tg(num_nodes)
     else:
         raise TypeError("Unknown type of adm_style!")
-    edge_index, edge_weight = tran_adm_to_edge_index(adm)
-    edge_index = edge_index.to(device)
-    return edge_index, nn.Parameter(edge_weight)
+    # edge_index, edge_weight = tran_adm_to_edge_index(adm)
+    # edge_index = edge_index.to(device)
+    return edge_index.to(device)
 
 
 def ts_un(n, k):
-    adm = np.zeros(shape=(n, n))
     if k < 1:
         raise ValueError("k must be greater than or equal to 1")
-    else:
-        for i in range(n):
-            if i < (n - k):
-                for k_one in range(1, k + 1):
-                    adm[i, i + k_one] = 1.
-            else:
-                for k_one in range(1, k + 1):
-                    if (k_one + i) >= n:
-                        pass
-                    else:
-                        adm[i, i + k_one] = 1.
+    adm = np.zeros((n, n))
+    for i in range(n - 1):
+        adm[i, i + 1: i + k + 1] = 1
     adm = (adm.T + adm) / 2
-    # adm = adm * 0.5
     return adm
 
 
 def tg(m):
-    adm = np.zeros(shape=(m, m))
-    for i in range(m - 1):
-        adm[i + 1, i] = 1
-    adm[0, m - 1] = 1
-    adm = adm * 0.5
+    adm = np.zeros((m, m))
+    adm[1:, :-1] = 1
+    adm[0, -1] = 1
+    adm *= 0.5
     return adm
 
 
@@ -155,8 +153,8 @@ class SimpleLSTM(nn.Module):
         return out
 
 
-class TransformerModel(nn.Module):
-    def __init__(self, d_model, out_dim, n_head, num_layers, length_max):
+class Trans(nn.Module):
+    def __init__(self, d_model, out_dim, n_head, num_layers, length_max, adm_style, gnn_style, k, device):
         super().__init__()
         self.encoder = nn.TransformerEncoder(nn.TransformerEncoderLayer(d_model, n_head, batch_first=True), num_layers)
         self.relu = nn.ReLU()
@@ -164,13 +162,21 @@ class TransformerModel(nn.Module):
         self.decoder = nn.Linear(d_model, out_dim)
         self.position_enc = PositionalEncoding(d_model, length_max)
 
+        self.adm_style, self.gnn_style, self.k, self.device = adm_style, gnn_style, k, device
+        self.gnn1 = get_gnn(gnn_style, d_model, 32)
+        self.gnn2 = get_gnn(gnn_style, 32, d_model)
+
     def forward(self, src):
-        # src = src + self.position_embedding(torch.arange(0, src.size(1)).unsqueeze(0).to(src.device))
-        # tgt = tgt + self.position_embedding(torch.arange(0, tgt.size(1)).unsqueeze(0).to(tgt.device))
         src = self.position_enc(src)
         memory = self.encoder(src)
-        memory = self.relu(self.drop(memory))
-        output = self.decoder(memory)
+
+        h = self.relu(self.drop(memory))
+        h = run_gnn(self.gnn_style, self.gnn1, h, self.adm_style, self.k, self.device)
+        h = self.relu(self.drop(h))
+        h = run_gnn(self.gnn_style, self.gnn2, h, self.adm_style, self.k, self.device)
+        h = self.relu(self.drop(h))
+
+        output = self.decoder(h)
         return output
 
 
